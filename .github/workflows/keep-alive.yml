@@ -1,0 +1,58 @@
+# Будильник для Supabase: раз в 3 дня обращается к базе, чтобы бесплатный проект не уснул.
+# Адрес и ключ берутся из index.html, вводить их ещё раз не нужно.
+name: Будильник Supabase
+
+on:
+  schedule:
+    - cron: '23 7 */3 * *'   # примерно раз в 3 дня, в 10:23 по Москве
+  workflow_dispatch:         # кнопка «Run workflow» для ручной проверки
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Обратиться к базе
+        run: |
+          python3 - <<'EOF'
+          import re, json, sys, urllib.request, urllib.error
+          s = open('index.html', encoding='utf-8').read()
+          m = re.search(r"const CFG=\{url:'([^']*)',key:'([^']*)'\}", s)
+          if not m or not m.group(1) or not m.group(2):
+              sys.exit('В index.html не заполнены url и key в строке const CFG=...')
+          url, key = m.group(1).rstrip('/'), m.group(2)
+          h = {'apikey': key, 'Content-Type': 'application/json'}
+          if key.startswith('eyJ'):
+              h['Authorization'] = 'Bearer ' + key
+          body = json.dumps({'p_name': 'будильник', 'p_pin': 'keepalive-ping'}).encode()
+          req = urllib.request.Request(url + '/rest/v1/rpc/load_progress', data=body, headers=h, method='POST')
+          try:
+              print('Ответ базы:', urllib.request.urlopen(req, timeout=60).read()[:200].decode())
+          except urllib.error.HTTPError as e:
+              text = e.read().decode(errors='replace')
+              if 'wrong_pin' in text:
+                  print('База ответила (имя занято другим PIN) - это тоже считается активностью.')
+              else:
+                  sys.exit(f'Ошибка {e.code}: {text[:300]}')
+          EOF
+
+      - name: Не дать GitHub отключить будильник
+        # GitHub выключает расписание в публичных репозиториях, где 60 дней не было изменений.
+        # Раз в ~50 дней добавляем пустой коммит, чтобы этого не случилось.
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 50 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Будильник: поддержка активности репозитория"
+            git push
+          else
+            echo "Последнее изменение было недавно, коммит не нужен."
+          fi
