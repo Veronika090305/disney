@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мультфильмы Disney: трекер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: тёплый вечерний кинозал, но интерфейс - лёгкий и современный, как хорошее приложение-коллекция
+   IDEA: ночное небо заставки; каждый просмотренный фильм зажигает золотой огонёк
+   PICTURE: сама коллекция - карточки эпох с кольцами прогресса и плавающая док-панель с общим кольцом
+   COLOUR and TYPE: ночная синева, фиолетово-розовая дымка, золото окон; Unbounded + Manrope
+   LAYOUT: одна колонка до 880px, липкая панель с вкладками и поиском, док прогресса внизу */
+:root{color-scheme:dark;--blue:#13297a;--pink:#e57bc0;--rose:#f6b2d8;--gold:#f7c66b;--gold2:#ffe2a3;--ink:#f5f3ff;--muted:#b4b1dc;--dim:#8b88bd;--glass:rgba(16,24,78,.55);--glass2:rgba(255,255,255,.06);--line:rgba(255,255,255,.1);--r:20px}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:150px}
+body{margin:0;color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif;overflow-x:clip;padding-bottom:170px;min-height:100vh;-webkit-font-smoothing:antialiased;
+background:radial-gradient(120% 60% at 0% 80%,rgba(229,123,192,.34),transparent 60%),radial-gradient(90% 45% at 100% 95%,rgba(140,90,200,.32),transparent 65%),linear-gradient(180deg,#060c2c 0%,#0d1d5c 38%,#1c2f82 66%,#3a2c86 88%,#5a3790 100%) fixed}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.8;
+background-image:radial-gradient(1.5px 1.5px at 20px 30px,#fff,transparent),radial-gradient(1px 1px at 90px 120px,#fff,transparent),radial-gradient(1.2px 1.2px at 160px 60px,#ffe9c2,transparent),radial-gradient(1px 1px at 230px 170px,#fff,transparent),radial-gradient(1.6px 1.6px at 300px 90px,#fff,transparent),radial-gradient(1px 1px at 50px 200px,#d9d4ff,transparent),radial-gradient(1px 1px at 130px 250px,#fff,transparent),radial-gradient(1.3px 1.3px at 270px 260px,#fff,transparent);
+background-size:320px 290px;mask-image:linear-gradient(#000 0%,#000 50%,transparent 88%);-webkit-mask-image:linear-gradient(#000 0%,#000 50%,transparent 88%)}
+#root{position:relative;z-index:1}
+.wrap{max-width:880px;margin:0 auto;padding:0 max(4vw,14px)}
+button{font:700 14px Manrope,sans-serif;color:var(--ink);background:none;border:0;cursor:pointer;min-height:40px;border-radius:999px;padding:0 14px}
+:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+
+header{padding:clamp(40px,7vw,80px) 0 26px}
+h1{font:700 clamp(36px,6.4vw,58px)/1.02 Unbounded,Manrope,sans-serif;letter-spacing:-.02em;margin:0 0 14px;color:#fff;text-wrap:balance}
+h1 span{background:linear-gradient(100deg,var(--gold2),var(--gold) 45%,var(--rose));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin:0;color:var(--muted);max-width:60ch;font-size:17px}
+.lead b{color:#fff;font-weight:700}
+
+.toolbar{position:sticky;top:10px;z-index:4;padding:10px;margin:0 0 8px;border-radius:26px;background:rgba(10,16,58,.72);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 12px 34px rgba(3,5,25,.35)}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--glass2);border:1px solid var(--line);overflow-x:auto;scrollbar-width:none;width:max-content;max-width:100%}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;color:var(--muted);display:flex;gap:8px;align-items:center;min-height:38px}
+.tabs button small{font-size:12px;font-weight:800;color:var(--dim);font-variant-numeric:tabular-nums}
+.tabs button[aria-selected=true]{background:linear-gradient(180deg,#ffe7b0,var(--gold));color:#2a1a05;box-shadow:0 4px 18px rgba(247,198,107,.35)}
+.tabs button[aria-selected=true] small{color:#6b4a12}
+.row2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.search{position:relative;flex:1 1 220px}
+.search svg{position:absolute;left:14px;top:50%;width:18px;height:18px;transform:translateY(-50%);opacity:.6}
+.search input{width:100%;height:44px;border-radius:999px;border:1px solid var(--line);background:rgba(8,14,52,.55);color:var(--ink);font:500 16px Manrope,sans-serif;padding:0 16px 0 42px;transition:border-color .2s,background .2s}
+.search input:focus{border-color:rgba(247,198,107,.6);background:rgba(8,14,52,.8);outline:none}
+.search input::placeholder{color:var(--dim)}
+.seg{display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--glass2);border:1px solid var(--line)}
+.seg button{color:var(--muted);min-height:36px;font-size:13px;padding:0 12px}
+.seg button[aria-pressed=true]{background:rgba(255,255,255,.14);color:#fff}
+.ghost{color:var(--muted);font-size:13px;padding:0 10px}
+.ghost:hover{color:#fff}
+.note{font-size:13px;color:var(--dim);margin:6px 6px 0}
+.seg-row{display:flex;gap:8px;align-items:center}
+
+section.studio{margin:30px 0 0}
+section.studio[hidden],details.era[hidden],li.film[hidden]{display:none}
+.st-head{display:flex;gap:16px;align-items:center;margin:0 0 14px;padding:0 2px}
+.st-head h2{margin:0;font:600 clamp(22px,3.4vw,30px)/1.15 Unbounded,Manrope,sans-serif;letter-spacing:-.01em;color:#fff;text-wrap:balance}
+.st-head p{margin:4px 0 0;color:var(--muted);font-size:15px;max-width:62ch}
+.st-head .txt{flex:1}
+
+.ring{--p:0;--s:44px;--t:5px;width:var(--s);height:var(--s);flex:none;border-radius:50%;display:grid;place-items:center;position:relative;
+background:conic-gradient(var(--gold) calc(var(--p)*1%),rgba(255,255,255,.12) 0)}
+.ring::before{content:"";position:absolute;inset:var(--t);border-radius:50%;background:#101a5a}
+.ring b{position:relative;font:800 12px Manrope,sans-serif;color:var(--gold2);font-variant-numeric:tabular-nums}
+.st-head .ring{--s:60px;--t:6px}
+.st-head .ring b{font-size:13px}
+
+details.era{background:var(--glass);border:1px solid var(--line);border-radius:var(--r);margin:0 0 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 10px 30px rgba(4,6,30,.25);transition:border-color .2s}
+details.era[open]{border-color:rgba(247,198,107,.22)}
+details.era>summary{list-style:none;cursor:pointer;padding:14px 16px 14px 18px;display:flex;align-items:center;gap:14px;border-radius:var(--r)}
+details.era>summary:hover{background:rgba(255,255,255,.03)}
+summary::-webkit-details-marker{display:none}
+.era-t{flex:1}
+.era-name{display:block;font:600 17px/1.25 Unbounded,Manrope,sans-serif;color:#fff}
+.era-sub{display:block;font-size:13px;color:var(--rose);font-weight:700;margin-top:3px}
+.era-sub i{font-style:normal;color:var(--dim);font-weight:600}
+.chev{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--glass2);transition:transform .25s,background .2s}
+.chev svg{width:14px;height:14px}
+details[open]>summary .chev{transform:rotate(180deg);background:rgba(247,198,107,.16)}
+.era-desc{margin:-2px 18px 10px;color:var(--muted);font-size:14px}
+ul.films{list-style:none;margin:0;padding:0 8px 8px;display:grid;gap:2px}
+
+li.film{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;border-radius:14px;transition:background .2s}
+li.film:hover{background:rgba(255,255,255,.04)}
+li.film.done{background:linear-gradient(90deg,rgba(247,198,107,.1),transparent 60%)}
+.chk{display:grid;place-items:center;width:44px;height:58px;cursor:pointer}
+.chk input{position:absolute;opacity:0;width:1px;height:1px}
+.box{width:26px;height:26px;border-radius:50%;border:2px solid rgba(180,177,220,.55);display:grid;place-items:center;transition:background .2s,border-color .2s,box-shadow .2s}
+.chk:hover .box{border-color:var(--gold2)}
+.box svg{width:14px;height:14px;opacity:0;transform:scale(.4);transition:.2s}
+.chk input:checked+.box{background:var(--gold);border-color:var(--gold);box-shadow:0 0 0 4px rgba(247,198,107,.18),0 0 16px rgba(247,198,107,.6)}
+.chk input:checked+.box svg{opacity:1;transform:none}
+.chk input:focus-visible+.box{outline:2px solid var(--gold2);outline-offset:3px}
+.box.pop{animation:pop .5s}
+@keyframes pop{40%{transform:scale(1.25);box-shadow:0 0 0 8px rgba(247,198,107,.25),0 0 26px rgba(255,226,163,.9)}}
+details.info>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;min-height:58px;padding:8px 8px 8px 2px}
+.t{font-weight:700;line-height:1.3;font-size:16px}
+.t small{display:block;font-weight:500;font-size:13px;color:var(--dim);margin-top:1px}
+.t em{font-style:normal;color:var(--rose);font-weight:700;font-variant-numeric:tabular-nums}
+.done .t{color:var(--gold2)}
+.imdb{font-weight:800;font-size:13px;white-space:nowrap;color:var(--gold2);background:rgba(247,198,107,.12);border:1px solid rgba(247,198,107,.3);border-radius:999px;padding:3px 10px;font-variant-numeric:tabular-nums}
+.imdb.na{color:var(--dim);background:var(--glass2);border-color:var(--line)}
+.mchev{width:24px;height:24px;display:grid;place-items:center;color:var(--dim);transition:transform .25s}
+.mchev svg{width:12px;height:12px}
+details.info[open] .mchev{transform:rotate(180deg);color:var(--gold2)}
+.body{margin:0 8px 14px 2px;padding:16px;border-radius:16px;background:rgba(6,10,40,.45);border:1px solid var(--line)}
+.body p{margin:0 0 14px;max-width:64ch}
+.lbl{display:block;font-size:12px;font-weight:800;color:var(--rose);margin:0 0 8px}
+.heroes{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.heroes span{font-size:13px;font-weight:600;background:var(--glass2);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+textarea{display:block;width:100%;min-height:96px;resize:vertical;border-radius:14px;border:1px solid var(--line);background:rgba(4,8,34,.6);color:var(--ink);font:16px/1.5 Manrope,sans-serif;padding:12px 14px;transition:border-color .2s}
+textarea:focus{outline:none;border-color:rgba(247,198,107,.6)}
+textarea::placeholder{color:var(--dim)}
+.meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
+.meta .seen{color:var(--gold2);font-weight:700}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:0 max(3vw,10px) calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.dock .in{pointer-events:auto;max-width:880px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px;align-items:center;padding:14px 18px;border-radius:24px;background:rgba(14,18,64,.78);border:1px solid rgba(247,198,107,.28);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 18px 50px rgba(3,5,25,.55),inset 0 1px 0 rgba(255,255,255,.08)}
+.dock .ring{--s:64px;--t:7px;grid-row:span 2;box-shadow:0 0 24px rgba(247,198,107,.25)}
+.dock .ring::before{background:#121a5c}
+.dock .ring b{font-size:15px}
+.btxt{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.btxt span:first-child{font-weight:800}
+.btxt span:last-child{font-size:12px;color:var(--dim)}
+.tracks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tl{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 5px}
+.tl b{color:var(--gold2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tb{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.tb i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold2) 60%,var(--rose));box-shadow:0 0 10px rgba(247,198,107,.6);transition:width .5s}
+@media(max-width:600px){
+ .dock .in{grid-template-columns:auto minmax(0,1fr);padding:12px 14px;gap:6px 12px}
+ .dock .ring{--s:54px;--t:6px;grid-row:auto}
+ .tracks{grid-column:1/-1;gap:10px}
+ .tl{flex-direction:column;gap:0}
+ .btxt{flex-direction:column;gap:0}
+ details.era>summary{padding:12px 12px 12px 14px;gap:10px}
+ .ring{--s:40px}
+ .era-desc{margin:-2px 14px 10px}
+ ul.films{padding:0 4px 6px}
+ .body{margin:0 4px 12px 0;padding:14px}
+ .st-head .ring{--s:52px}
+ html{scroll-padding-top:20px}
+ .toolbar{position:static;padding:8px;border-radius:22px}
+ .tabs{width:100%}
+ .tabs button{flex:1;justify-content:center;padding:0 8px;font-size:13px}
+ .tabs button small{display:none}
+ .seg-row{width:100%;overflow-x:auto;scrollbar-width:none}
+ .seg-row::-webkit-scrollbar{display:none}
+ .seg,.ghost{flex:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.who{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 18px;font-size:14px;color:var(--muted)}
+.who b{color:#fff}
+.who button{min-height:36px;font-size:13px;color:var(--gold2);border:1px solid rgba(247,198,107,.35);background:rgba(247,198,107,.08)}
+.login{min-height:100vh;display:grid;place-items:center;padding:24px 14px}
+.login .card{width:min(420px,100%);padding:28px 24px;border-radius:26px;background:rgba(12,18,62,.78);border:1px solid rgba(247,198,107,.28);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 24px 60px rgba(3,5,25,.55)}
+.login h1{font-size:clamp(28px,7vw,36px);margin:0 0 12px}
+.login p{color:var(--muted);margin:0 0 18px;font-size:15px}
+.login label{display:block;font-size:13px;font-weight:800;color:var(--rose);margin:0 0 6px}
+.login input{width:100%;height:48px;border-radius:14px;border:1px solid var(--line);background:rgba(4,8,34,.6);color:var(--ink);font:500 16px Manrope,sans-serif;padding:0 14px;margin:0 0 14px}
+.login input:focus{outline:none;border-color:rgba(247,198,107,.6)}
+.login .err{color:#ffb4c8;min-height:1.2em;margin:0 0 10px;font-size:14px}
+.login .go{width:100%;min-height:50px;font-size:16px;color:#2a1a05;background:linear-gradient(180deg,#ffe7b0,var(--gold));box-shadow:0 6px 22px rgba(247,198,107,.35)}
+.login .go:disabled{opacity:.7}
+.login .hint{font-size:13px;color:var(--dim);margin:12px 0 0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+{
+const ERAS=[
+["golden","Золотой век","1937-1942","Первые полнометражные мультфильмы студии: смелые эксперименты, ручная анимация и сказки, ставшие классикой."],
+["war","Военные годы и сборники","1942-1949","Во время Второй мировой студия выпускала «пакетные» фильмы - сборники коротких музыкальных новелл."],
+["silver","Серебряный век","1950-1967","Возвращение к большим сказкам: принцессы, Питер Пэн, далматинцы. Заканчивается последним фильмом, над которым работал сам Уолт Дисней."],
+["bronze","Бронзовый век","1970-1988","Студия ищет себя после смерти Уолта: камерные истории о животных и первые эксперименты с компьютерной графикой."],
+["ren","Диснеевский ренессанс","1989-1999","Золотое десятилетие мюзиклов: «Русалочка», «Король Лев», «Аладдин» вернули Диснею славу и «Оскары»."],
+["post","Пост-ренессанс","1999-2008","Эксперименты с жанрами - фантастика, комедия, приключения - и переход к 3D-анимации."],
+["rev","Эпоха возрождения","2009-2019","Новый расцвет: «Рапунцель», «Холодное сердце», «Зверополис» - хиты для всей семьи."],
+["new","Новая эпоха","2021-2026","Мир после пандемии: сиквелы, юбилейный «Заветное желание» и новые оригинальные истории."]
+].map(e=>["wdas",...e]).concat([
+["pixar","p90","Первые шаги","1995-1999","Первый в мире полностью компьютерный полнометражный мультфильм и первые хиты студии."],
+["pixar","p00","Золотая полоса","2001-2009","Десятилетие, когда почти каждый фильм Pixar становился событием и получал «Оскары»."],
+["pixar","p10","Сиквелы и новые миры","2010-2019","Продолжения любимых историй и новые миры - от эмоций в голове до Страны мёртвых."],
+["pixar","p20","2020-е","2020-2026","Фильмы времён пандемии, премьеры сразу на Disney+ и возвращение в кинотеатры."],
+["toon","t90","Первые сиквелы","1990-1999","Студия начинает с кинофильма по «Утиным историям» и первых видеопродолжений классики."],
+["toon","t00","Расцвет видеопродолжений","2000-2004","Сиквелы почти ко всем хитам Ренессанса - на видеокассетах и DVD, иногда в кино."],
+["toon","t05","Последние сиквелы классики","2005-2008","Приквелы и продолжения «Бэмби», «Мулан», «Тарзана», «Золушки»; в 2007 году выпуск сиквелов свернули."],
+["toon","t08","Феи и «Самолёты»","2008-2015","Собственные франшизы студии: феи Динь-Динь и спин-офф «Тачек». В 2018 году студию закрыли."]
+]);
+const STUDIOS=[
+["wdas","Walt Disney Animation Studios","Канон","Официальный «канон» - полнометражные фильмы главной анимационной студии Disney, от «Белоснежки» до Hexed."],
+["pixar","Pixar","Pixar","С 2006 года принадлежит Disney. Все полнометражные фильмы студии вышли под маркой Disney - от «Истории игрушек» до «Истории игрушек 5»."],
+["toon","DisneyToon Studios: сиквелы и спин-оффы","DisneyToon","Подразделение Disney, выпускавшее продолжения, приквелы и спин-оффы - в основном сразу на видео, иногда в кино."]
+];
+const F=[
+["snow","golden",1937,"Белоснежка и семь гномов","Snow White and the Seven Dwarfs",7.6,"Спасаясь от ревнивой Королевы-мачехи, принцесса находит приют в лесном домике семи гномов. Но Королева находит её и приносит отравленное яблоко.","Белоснежка|Злая Королева|Принц|Ворчун|Простачок|Док"],
+["pinocchio","golden",1940,"Пиноккио","Pinocchio",7.4,"Деревянная кукла, оживлённая Голубой Феей, должна доказать, что смела, честна и добра, чтобы стать настоящим мальчиком.","Пиноккио|Джеппетто|Сверчок Джимини|Голубая Фея|Стромболи"],
+["fantasia","golden",1940,"Фантазия","Fantasia",7.7,"Концерт-альманах: восемь произведений классической музыки превращены в анимационные истории - от абстракций под Баха до «Ученика чародея».","Микки Маус|Чернобог|Леопольд Стоковский"],
+["dumbo","golden",1941,"Дамбо","Dumbo",7.2,"Над слонёнком с огромными ушами смеётся весь цирк, но с помощью мышонка Тимоти он узнаёт, что умеет летать.","Дамбо|Тимоти|миссис Джамбо"],
+["bambi","golden",1942,"Бэмби","Bambi",7.3,"Оленёнок растёт в лесу, находит друзей, переживает гибель матери и становится Великим Принцем леса.","Бэмби|Топотун|Цветочек|Фалина|Большой Филин"],
+["saludos","war",1942,"Салюдос Амигос","Saludos Amigos",6.1,"Четыре новеллы о путешествии аниматоров по Южной Америке: Дональд, Гуфи и попугай Хосе знакомятся с Андами, пампасами и Рио.","Дональд Дак|Гуфи|Хосе Кариока"],
+["caballeros","war",1944,"Три кабальеро","The Three Caballeros",6.3,"Дональд получает подарки из Латинской Америки и вместе с попугаем Хосе и петухом Панчито отправляется в музыкальное путешествие.","Дональд Дак|Хосе Кариока|Панчито"],
+["music","war",1946,"Сыграй мою музыку","Make Mine Music",6.2,"Десять музыкальных новелл на популярную и классическую музыку, среди них «Петя и волк» и история кита, мечтавшего петь в опере.","Петя и Волк|кит Вилли|бейсболист Кейси"],
+["fancy","war",1947,"Весёлые и беззаботные","Fun and Fancy Free",6.4,"Две истории: цирковой медвежонок Бонго сбегает в лес, а Микки, Дональд и Гуфи взбираются по бобовому стеблю к великану.","Микки Маус|Дональд Дак|Гуфи|Бонго|Сверчок Джимини"],
+["melody","war",1948,"Время мелодий","Melody Time",6.5,"Семь музыкальных новелл - от легенды о Джонни Яблочное Семечко до ковбоя Пекоса Билла и буксирчика Тута.","Джонни Яблочное Семечко|Пекос Билл|Литтл Тут"],
+["ichabod","war",1949,"Приключения Икабода и мистера Тоада","The Adventures of Ichabod and Mr. Toad",6.9,"Две новеллы: безрассудный мистер Тоад теряет поместье из-за страсти к автомобилям, а учитель Икабод Крейн встречает Всадника без головы.","мистер Тоад|Крот|Икабод Крейн|Всадник без головы"],
+["cinderella","silver",1950,"Золушка","Cinderella",7.3,"Добрая девушка, которую притесняют мачеха и сводные сёстры, с помощью феи-крёстной попадает на королевский бал и теряет хрустальную туфельку.","Золушка|Фея-крёстная|Принц|леди Тремейн|мыши Жак и Гас"],
+["alice","silver",1951,"Алиса в Стране чудес","Alice in Wonderland",7.3,"Алиса проваливается в кроличью нору и попадает в мир абсурда, где правит вспыльчивая Червонная Королева.","Алиса|Белый Кролик|Безумный Шляпник|Чеширский Кот|Червонная Королева"],
+["peterpan","silver",1953,"Питер Пэн","Peter Pan",7.3,"Мальчик, который не хочет взрослеть, уносит Венди и её братьев в Нетландию, где они сражаются с капитаном Крюком.","Питер Пэн|Венди|Динь-Динь|Капитан Крюк|Сми"],
+["lady","silver",1955,"Леди и Бродяга","Lady and the Tramp",7.3,"Избалованная кокер-спаниель Леди теряется в городе и проводит незабываемые дни с дворнягой Бродягой.","Леди|Бродяга|Джок|Трасти|сиамские кошки"],
+["sleeping","silver",1959,"Спящая красавица","Sleeping Beauty",7.2,"Злая фея Малефисента проклинает принцессу Аврору, и три добрые феи прячут её в лесу до шестнадцатилетия.","Аврора|принц Филипп|Малефисента|Флора, Фауна и Мэривеза"],
+["dalmatians","silver",1961,"101 далматинец","One Hundred and One Dalmatians",7.2,"Далматинцы Понго и Пэдди спасают своих щенков - и ещё 84 - от Круэллы де Виль, мечтающей о пятнистой шубе.","Понго|Пэдди|Круэлла де Виль|Роджер|Анита"],
+["sword","silver",1963,"Меч в камне","The Sword in the Stone",7.1,"Волшебник Мерлин обучает мальчишку-сироту Варта, которому суждено вытащить меч из камня и стать королём Артуром.","Варт (Артур)|Мерлин|сова Архимед|Мадам Мим"],
+["jungle","silver",1967,"Книга джунглей","The Jungle Book",7.6,"Пантера Багира ведёт Маугли к людям, чтобы спасти его от тигра Шерхана, но мальчик хочет остаться в джунглях с медведем Балу.","Маугли|Балу|Багира|Шерхан|Каа|король Луи"],
+["aristocats","bronze",1970,"Коты-аристократы","The Aristocats",7.1,"Кошку Герцогиню и её котят, наследников богатой мадам, по вине дворецкого бросают за городом; дорогу в Париж им помогает найти бродяга О'Мэлли.","Герцогиня|Томас О'Мэлли|Мари, Тулуз и Берлиоз|дворецкий Эдгар"],
+["robin","bronze",1973,"Робин Гуд","Robin Hood",7.5,"Лис Робин Гуд вместе с медведем Малышом Джоном обирает жадного принца Джона, чтобы помочь бедным жителям Ноттингема.","Робин Гуд|Малыш Джон|Дева Мэриан|принц Джон|шериф Ноттингемский"],
+["pooh77","bronze",1977,"Множество приключений Винни-Пуха","The Many Adventures of Winnie the Pooh",7.5,"Три истории о Винни-Пухе и его друзьях из Чудесного леса: медовое дерево, ненастный день и прыгучий Тигра.","Винни-Пух|Кристофер Робин|Пятачок|Тигра|Иа-Иа|Кролик"],
+["rescuers","bronze",1977,"Спасатели","The Rescuers",6.9,"Мыши из Общества спасения Бернард и Бьянка выручают сироту Пенни, которую злодейка мадам Медуза держит на болотах ради алмаза.","Бернард|Бьянка|Пенни|мадам Медуза"],
+["fox","bronze",1981,"Лис и пёс","The Fox and the Hound",7.2,"Лисёнок Тод и щенок-гончая Коппер дружат с детства, но вырастают по разные стороны охоты.","Тод|Коппер|вдова Твид|Амос Слейд"],
+["cauldron","bronze",1985,"Чёрный котёл","The Black Cauldron",6.4,"Юный свинопас Таран пытается помешать Рогатому Королю завладеть Чёрным котлом, способным поднять армию мёртвых.","Таран|принцесса Эйлонви|Гурги|Рогатый Король"],
+["basil","bronze",1986,"Великий мышиный сыщик","The Great Mouse Detective",7.1,"Мышиный Шерлок Холмс Бэзил разыскивает похищенного отца девочки Оливии и сражается с профессором Ратиганом.","Бэзил|доктор Доусон|Оливия|профессор Ратиган"],
+["oliver","bronze",1988,"Оливер и компания","Oliver & Company",6.6,"«Оливер Твист» в Нью-Йорке: бездомный котёнок прибивается к собачьей банде воришек, а потом находит настоящий дом.","Оливер|Доджер|Фейгин|Дженни|Сайкс"],
+["mermaid","ren",1989,"Русалочка","The Little Mermaid",7.6,"Русалка Ариэль отдаёт голос морской ведьме Урсуле в обмен на ноги, чтобы быть рядом с принцем Эриком.","Ариэль|принц Эрик|Себастьян|Флаундер|Урсула|король Тритон"],
+["resc2","ren",1990,"Спасатели в Австралии","The Rescuers Down Under",6.9,"Бернард и Бьянка летят в Австралию на выручку мальчику Коди, которого похитил браконьер Мак-Лич.","Бернард|Бьянка|Коди|Мак-Лич|альбатрос Уилбур"],
+["beauty","ren",1991,"Красавица и Чудовище","Beauty and the Beast",8.0,"Белль занимает место отца в плену у Чудовища - заколдованного принца, которого может спасти только настоящая любовь.","Белль|Чудовище|Гастон|Люмьер|Когсворт|миссис Поттс"],
+["aladdin","ren",1992,"Аладдин","Aladdin",8.0,"Уличный парень Аладдин находит лампу с Джинном и пытается завоевать принцессу Жасмин, а коварный визирь Джафар охотится за лампой.","Аладдин|Жасмин|Джинн|Джафар|Абу|Яго"],
+["lion","ren",1994,"Король Лев","The Lion King",8.5,"После гибели отца львёнок Симба убегает из дома, но однажды должен вернуться и отнять трон у коварного дяди Шрама.","Симба|Муфаса|Шрам|Нала|Тимон и Пумба|Рафики"],
+["pocahontas","ren",1995,"Покахонтас","Pocahontas",6.7,"Дочь вождя Покахонтас и английский капитан Джон Смит пытаются предотвратить войну между колонистами и её народом.","Покахонтас|Джон Смит|губернатор Рэтклифф|енот Мико"],
+["hunchback","ren",1996,"Горбун из Нотр-Дама","The Hunchback of Notre Dame",7.0,"Звонарь Квазимодо, которого судья Фролло прячет в соборе, выходит на Праздник шутов и встаёт на защиту цыганки Эсмеральды.","Квазимодо|Эсмеральда|Фролло|капитан Феб"],
+["hercules","ren",1997,"Геркулес","Hercules",7.3,"Сын Зевса, лишённый бессмертия, должен стать настоящим героем, чтобы вернуться на Олимп, а повелитель подземного мира Аид строит ему козни.","Геркулес|Мег|Аид|Фил|Пегас"],
+["mulan","ren",1998,"Мулан","Mulan",7.7,"Чтобы спасти старого отца от призыва, Мулан переодевается мужчиной и уходит в армию сражаться с гуннами.","Мулан|дракончик Мушу|капитан Ли Шанг|Шань Ю"],
+["tarzan","ren",1999,"Тарзан","Tarzan",7.3,"Мальчик, выращенный гориллами, встречает людей - исследовательницу Джейн и её отца - и выбирает между двумя мирами.","Тарзан|Джейн|Кала|Керчак|Клейтон"],
+["f2000","post",1999,"Фантазия 2000","Fantasia 2000",7.2,"Продолжение «Фантазии»: семь новых номеров на классическую музыку и «Ученик чародея» из оригинала.","Микки Маус|Дональд Дак|Жар-птица"],
+["dinosaur","post",2000,"Динозавр","Dinosaur",6.5,"Игуанодон Аладар, выросший среди лемуров, после падения метеорита ведёт уцелевшее стадо к Долине гнездовий.","Аладар|Нира|Крон|лемуры Зини и Плио"],
+["groove","post",2000,"Похождения императора","The Emperor's New Groove",7.4,"Самовлюблённого императора Куско превращают в ламу, и вернуть трон он может только с помощью добродушного крестьянина Пачи.","Куско|Пача|Изма|Кронк"],
+["atlantis","post",2001,"Атлантида: Затерянная империя","Atlantis: The Lost Empire",6.9,"Лингвист Майло присоединяется к экспедиции на поиски Атлантиды и обнаруживает, что её жители живы, а наёмники охотятся за их источником силы.","Майло Тэтч|принцесса Кида|командир Рурк"],
+["lilo","post",2002,"Лило и Стич","Lilo & Stitch",7.3,"Одинокая гавайская девочка Лило берёт из приюта «собаку», которая оказывается сбежавшим инопланетным экспериментом, - и учит его, что такое «охана».","Лило|Стич|Нани|Джамба|Пликли"],
+["treasure","post",2002,"Планета сокровищ","Treasure Planet",7.2,"«Остров сокровищ» в космосе: юный Джим Хокинс отправляется на поиски планеты капитана Флинта и сближается с киборгом Сильвером.","Джим Хокинс|Джон Сильвер|Морф|капитан Амелия|робот Б.Е.Н."],
+["brotherbear","post",2003,"Братец медвежонок","Brother Bear",6.8,"Молодой охотник Кенай превращается в медведя и, путешествуя с медвежонком Кодой, учится видеть мир глазами тех, на кого охотился.","Кенай|Кода|Денахи|лоси Рат и Тук"],
+["range","post",2004,"Не бей копытом!","Home on the Range",5.4,"Три коровы с маленькой фермы охотятся за наградой за поимку угонщика скота, чтобы спасти свою ферму от продажи.","Мэгги|миссис Кэллоуэй|Грейс|Алмейда Слим"],
+["chicken","post",2005,"Цыплёнок Цыпа","Chicken Little",5.7,"Цыпа поднял панику, что «небо падает», и стал посмешищем, а через год ему приходится спасать городок от настоящего инопланетного вторжения.","Цыпа|Эбби|Рант|рыбка Фиш"],
+["robinsons","post",2007,"В гости к Робинсонам","Meet the Robinsons",6.8,"Сирота-изобретатель Льюис попадает в будущее, знакомится с эксцентричной семьёй Робинсонов и узнаёт кое-что важное о своей судьбе.","Льюис|Уилбур Робинсон|Человек в котелке"],
+["bolt","post",2008,"Вольт","Bolt",6.8,"Пёс - звезда телешоу - уверен, что у него суперсилы. Оказавшись на другом конце страны, он едет домой к хозяйке Пенни и узнаёт, каково быть обычной собакой.","Вольт|Пенни|кошка Варежка|хомяк Рино"],
+["frog","rev",2009,"Принцесса и лягушка","The Princess and the Frog",7.2,"Официантка Тиана из Нового Орлеана целует принца-лягушку и сама превращается в лягушку; чтобы расколдоваться, им нужно добраться до колдуньи болот.","Тиана|принц Навин|доктор Фасилье|аллигатор Луи|светлячок Рэй"],
+["tangled","rev",2010,"Рапунцель: Запутанная история","Tangled",7.7,"Рапунцель с волшебными волосами 18 лет живёт в башне и с помощью вора Флина впервые выходит в мир, чтобы увидеть летающие фонарики.","Рапунцель|Флин Райдер|мать Готель|хамелеон Паскаль|конь Максимус"],
+["pooh11","rev",2011,"Медвежонок Винни и его друзья","Winnie the Pooh",7.1,"Винни ищет мёд, а друзья - пропавший хвост Иа и загадочное чудище, которое якобы похитило Кристофера Робина.","Винни-Пух|Пятачок|Иа-Иа|Тигра|Кристофер Робин|Сова"],
+["ralph","rev",2012,"Ральф","Wreck-It Ralph",7.7,"Злодей из аркадной игры устал быть плохим и сбегает в другие игры за медалью героя, где встречает гонщицу-«глюк» Ванилопу.","Ральф|Ванилопа|Феликс|сержант Калхун|Король Карамель"],
+["frozen","rev",2013,"Холодное сердце","Frozen",7.4,"Королева Эльза случайно погружает королевство в вечную зиму, и её сестра Анна отправляется в горы, чтобы вернуть сестру и лето.","Анна|Эльза|Кристофф|Олаф|олень Свен|Ханс"],
+["bh6","rev",2014,"Город героев","Big Hero 6",7.8,"Юный гений Хиро и надувной робот-медик Бэймакс собирают команду героев, чтобы найти виновного в гибели брата Хиро.","Хиро|Бэймакс|Тадаши|Го Го|Васаби|Хани Лемон|Фред"],
+["zootopia","rev",2016,"Зверополис","Zootopia",8.0,"Крольчиха Джуди становится первой полицейской-кроликом и вместе с лисом-мошенником Ником раскрывает заговор вокруг исчезновения хищников.","Джуди Хоппс|Ник Уайлд|шеф Буйвол|Беллвезер|ленивец Блиц"],
+["moana","rev",2016,"Моана","Moana",7.6,"Дочь вождя Моана отправляется в океан вместе с полубогом Мауи, чтобы вернуть богине Те Фити похищенное сердце и спасти родной остров.","Моана|Мауи|петух Хей-Хей|бабушка Тала|краб Таматоа"],
+["ralph2","rev",2018,"Ральф против интернета","Ralph Breaks the Internet",6.9,"Ральф и Ванилопа отправляются в интернет за деталью для её игры - и их дружба проходит проверку на прочность.","Ральф|Ванилопа|Шэнк|Йесс"],
+["frozen2","rev",2019,"Холодное сердце II","Frozen II",6.8,"Эльза слышит таинственный голос и вместе с Анной, Кристоффом и Олафом отправляется в Зачарованный лес узнать правду о прошлом королевства и своей силе.","Эльза|Анна|Кристофф|Олаф|дух огня Бруни"],
+["raya","new",2021,"Райя и последний дракон","Raya and the Last Dragon",7.3,"В мире Кумандры воительница Райя ищет последнего дракона Сису, чтобы победить друунов, обративших людей в камень.","Райя|дракон Сису|Намаари|Тук-Тук|Бун"],
+["encanto","new",2021,"Энканто","Encanto",7.2,"В волшебной семье Мадригаль у каждого есть дар, кроме Мирабель - но именно она замечает, что магия дома угасает, и пытается её спасти.","Мирабель|бабушка Альма|Бруно|Луиза|Исабела"],
+["strange","new",2022,"Странный мир","Strange World",5.6,"Семья исследователей Клэйдов спускается в неизведанный подземный мир, чтобы спасти растение - источник энергии их страны, и заодно разобраться в отношениях отцов и детей.","Сёрчер Клэйд|Итан|Джегер Клэйд|Сплэт"],
+["wish","new",2023,"Заветное желание","Wish",5.6,"Аша загадывает желание звезде, и та спускается с неба; вместе они бросают вызов королю Магнифико, который держит желания жителей под замком.","Аша|Звезда|король Магнифико|козлёнок Валентино"],
+["moana2","new",2024,"Моана 2","Moana 2",6.3,"Получив зов предков, Моана с новой командой отправляется в далёкие воды Океании, чтобы снять проклятие и вновь соединить народы океана.","Моана|Мауи|сестрёнка Симеа|Матанги|Хей-Хей|Пуа"],
+["zoo2","new",2025,"Зверополис 2","Zootopia 2",7.4,"Джуди и Ник, теперь напарники, расследуют дело таинственной змеи, появившейся в городе, и раскрывают тайны прошлого Зверополиса.","Джуди Хоппс|Ник Уайлд|змей Гэри Де'Снейк"],
+["hexed","new",2026,"Hexed","Hexed · русского названия пока нет",null,"Импульсивная школьница Билли Доу обнаруживает в себе магию и вместе с осторожной мамой Элис попадает в мир ведьм Хексе, где их ждут семейные тайны. В кино с 25 ноября 2026.","Билли Доу|мама Элис|перо Мисс Квилл|журнал Элиас Квайр"],
+["p_toy","p90",1995,"История игрушек","Toy Story",8.3,"Ковбой Вуди ревнует хозяина Энди к новой игрушке - космическому рейнджеру Баззу Лайтеру. Потерявшись, соперники вместе ищут дорогу домой.","Вуди|Базз Лайтер|Энди|Мистер Картофельная Голова|Рекс|Сид"],
+["p_bugs","p90",1998,"Приключения Флика","A Bug's Life",7.2,"Изобретательный муравей Флик ищет воинов, чтобы защитить колонию от банды кузнечиков, и по ошибке нанимает труппу бродячего цирка.","Флик|принцесса Атта|Дот|Хоппер|циркачи"],
+["p_toy2","p90",1999,"История игрушек 2","Toy Story 2",7.9,"Вуди похищает коллекционер, Базз с друзьями отправляются его спасать, а сам Вуди узнаёт о своём прошлом и знакомится с Джесси.","Вуди|Базз Лайтер|Джесси|конь Булзай|Старатель|Эл"],
+["p_monsters","p00",2001,"Корпорация монстров","Monsters, Inc.",8.1,"Лучший «пугатель» Салли и его друг Майк обнаруживают в мире монстров человеческую девочку, которую все считают смертельно опасной.","Салли|Майк Вазовски|Бу|Рэндалл|Роз"],
+["p_nemo","p00",2003,"В поисках Немо","Finding Nemo",8.2,"Рыба-клоун Марлин пересекает океан в поисках сына Немо, пойманного аквалангистом, - вместе с забывчивой рыбкой Дори.","Марлин|Немо|Дори|черепаха Краш|Жабр"],
+["p_incredibles","p00",2004,"Суперсемейка","The Incredibles",8.0,"Бывший супергерой мистер Исключительный скучает в офисе, пока тайное задание не втягивает в опасное приключение всю его семью.","мистер Исключительный|Эластика|Фиалка|Шастик|Джек-Джек|Синдром|Эдна Мод"],
+["p_cars","p00",2006,"Тачки","Cars",7.3,"Самоуверенный гоночный автомобиль Молния Маккуин застревает в забытом городке на трассе 66 и учится ценить дружбу.","Молния Маккуин|Мэтр|Салли|Док Хадсон"],
+["p_ratatouille","p00",2007,"Рататуй","Ratatouille",8.1,"Крыса Реми мечтает стать поваром и, спрятавшись под колпаком неуклюжего поварёнка Лингвини, готовит в парижском ресторане.","Реми|Лингвини|Колетт|критик Антон Эго|шеф Скиннер"],
+["p_walle","p00",2008,"ВАЛЛ·И","WALL·E",8.4,"Одинокий робот-уборщик веками прибирает опустевшую Землю, пока не встречает робота-разведчицу ЕВУ и не улетает за ней в космос.","ВАЛЛ·И|ЕВА|капитан|автопилот АВТО"],
+["p_up","p00",2009,"Вверх","Up",8.3,"Пожилой вдовец Карл привязывает к дому тысячи шариков, чтобы улететь в Южную Америку, но на крыльце оказывается юный скаут Рассел.","Карл Фредриксен|Рассел|пёс Даг|птица Кевин|Чарльз Манц"],
+["p_toy3","p10",2010,"История игрушек: Большой побег","Toy Story 3",8.3,"Энди уезжает в колледж, а игрушки попадают в детский сад, который оказывается настоящей тюрьмой под властью плюшевого медведя Лотсо.","Вуди|Базз Лайтер|Джесси|Лотсо|Кен и Барби|Бонни"],
+["p_cars2","p10",2011,"Тачки 2","Cars 2",6.2,"Маккуин едет на мировое Гран-при, а его друга Мэтра по ошибке принимают за шпиона и втягивают в секретную операцию.","Мэтр|Молния Маккуин|Финн Макмиссл|Холли Шифтвелл"],
+["p_brave","p10",2012,"Храбрая сердцем","Brave",7.1,"Шотландская принцесса Мерида отказывается от брака по договорённости, и колдунья исполняет её желание так, что мама превращается в медведицу.","Мерида|королева Элинор|король Фергус|колдунья"],
+["p_mu","p10",2013,"Университет монстров","Monsters University",7.2,"Приквел «Корпорации монстров»: как Майк и Салли из соперников-первокурсников стали лучшими друзьями.","Майк Вазовски|Салли|декан Хардскрэббл|Рэндалл"],
+["p_insideout","p10",2015,"Головоломка","Inside Out",8.1,"В голове 11-летней Райли эмоции Радость, Грусть, Гнев, Страх и Брезгливость пытаются помочь ей пережить переезд в новый город.","Райли|Радость|Грусть|Гнев|Страх|Брезгливость|Бинг-Бонг"],
+["p_gooddino","p10",2015,"Хороший динозавр","The Good Dinosaur",6.7,"В мире, где астероид не упал на Землю, юный апатозавр Арло теряется вдали от дома и находит друга - дикого мальчика Спота.","Арло|Спот|Бутч|папа Арло"],
+["p_dory","p10",2016,"В поисках Дори","Finding Dory",7.2,"Забывчивая Дори вспоминает о своей семье и вместе с Марлином и Немо отправляется искать родителей в морской институт.","Дори|Марлин|Немо|осьминог Хэнк|китовая акула Дестини"],
+["p_cars3","p10",2017,"Тачки 3","Cars 3",6.7,"Стареющий Маккуин пытается угнаться за новым поколением скоростных гонщиков и находит неожиданную помощницу - тренера Крус.","Молния Маккуин|Крус Рамирес|Джексон Шторм|Мэтр"],
+["p_coco","p10",2017,"Тайна Коко","Coco",8.4,"Мальчик Мигель мечтает о музыке, которую запрещает его семья, и в День мёртвых попадает в мир предков.","Мигель|Гектор|Эрнесто де ла Крус|мама Коко|пёс Данте"],
+["p_incr2","p10",2018,"Суперсемейка 2","Incredibles 2",7.5,"Эластика становится лицом кампании за возвращение супергероев, а мистер Исключительный остаётся дома с детьми и непредсказуемым малышом Джек-Джеком.","Эластика|мистер Исключительный|Джек-Джек|Фиалка|Шастик"],
+["p_toy4","p10",2019,"История игрушек 4","Toy Story 4",7.7,"Вуди отправляется в путешествие с Бонни и её самодельной игрушкой Вилкинсом - и встречает давнюю подругу Бо Пип.","Вуди|Вилкинс|Бо Пип|Базз Лайтер|Габби-Габби|Дюк Бубумс"],
+["p_onward","p20",2020,"Вперёд","Onward",7.4,"Братья-эльфы Иэн и Барли отправляются в магический поход, чтобы на один день вернуть умершего отца.","Иэн|Барли|мама Лорел|Мантикора"],
+["p_soul","p20",2020,"Душа","Soul",8.0,"Школьный учитель музыки Джо мечтает о джазе, но перед большим выступлением попадает в «Великое До», где встречает упрямую душу 22.","Джо Гарднер|душа 22|Дороти Уильямс"],
+["p_luca","p20",2021,"Лука","Luca",7.4,"Морское чудище Лука, которое на суше превращается в мальчика, проводит незабываемое лето в итальянском городке.","Лука|Альберто|Джулия|Эрколе"],
+["p_turningred","p20",2022,"Я краснею","Turning Red",7.0,"13-летняя Мэй из Торонто, стоит ей разволноваться, превращается в огромную красную панду.","Мэй Ли|мама Мин|Мириам|Прия|Эбби"],
+["p_lightyear","p20",2022,"Базз Лайтер","Lightyear",6.1,"История «настоящего» космического рейнджера Базза Лайтера, который пытается вернуть экипаж домой с враждебной планеты.","Базз Лайтер|кот-робот Сокс|Иззи|император Зург"],
+["p_elemental","p20",2023,"Элементарно","Elemental",7.0,"В городе, где живут жители-стихии, огненная Эмбер и водяной Уэйд обнаруживают, что у них больше общего, чем кажется.","Эмбер|Уэйд|Бёрни|Гейл"],
+["p_insideout2","p20",2024,"Головоломка 2","Inside Out 2",7.5,"У Райли начинается переходный возраст, и в её голове появляются новые эмоции во главе с Тревожностью.","Райли|Радость|Тревожность|Зависть|Хандра|Смущение"],
+["p_elio","p20",2025,"Элио","Elio",6.6,"Одинокий мальчик Элио, мечтающий о пришельцах, по ошибке становится «послом Земли» в межгалактическом совете.","Элио|тётя Ольга|Глордон|Григон"],
+["p_hoppers","p20",2026,"Hoppers","Hoppers · русского названия пока нет",7.2,"Студентка Мейбл переносит сознание в робота-бобра, чтобы уговорить лесных зверей вернуться на поляну, которой грозит застройка.","Мейбл|бобр король Джордж|доктор Сэм|мэр Джерри"],
+["p_toy5","p20",2026,"История игрушек 5","Toy Story 5",7.5,"Игрушки Бонни сталкиваются с новым соперником - детским планшетом Лилипад, и Джесси приходится доказывать, что настоящие игрушки всё ещё нужны.","Вуди|Базз Лайтер|Джесси|планшет Лилипад|Бонни"],
+["t_ducktales","t90",1990,"Утиные истории: Заветная лампа","DuckTales the Movie: Treasure of the Lost Lamp",6.9,"Скрудж Макдак с племянниками находит сокровища Али-Бабы и волшебную лампу с джинном, за которой охотится колдун Мерлок.","Скрудж Макдак|Билли, Вилли и Дилли|Поночка|Джинн|Мерлок"],
+["t_jafar","t90",1994,"Возвращение Джафара","The Return of Jafar",5.8,"Джафар вырывается из лампы, чтобы отомстить Аладдину, а попугай Яго переходит на сторону героев.","Аладдин|Жасмин|Джинн|Джафар|Яго|Абис Мал"],
+["t_goofy","t90",1995,"Каникулы Гуфи","A Goofy Movie",6.9,"Гуфи увозит сына-подростка Макса в поездку через всю страну, а Макс мечтает попасть на концерт и впечатлить девушку.","Гуфи|Макс|Роксана|Пи Джей|Пит"],
+["t_thieves","t90",1996,"Аладдин и король разбойников","Aladdin and the King of Thieves",6.4,"Свадьбу Аладдина и Жасмин срывают Сорок разбойников, и Аладдин узнаёт, что их предводитель - его отец.","Аладдин|Кассим|Жасмин|Джинн|Сэлух"],
+["t_poohgrand","t90",1997,"Великое путешествие Пуха: В поисках Кристофера Робина","Pooh's Grand Adventure: The Search for Christopher Robin",6.6,"Пух и друзья отправляются в опасный путь спасать Кристофера Робина, не понимая, что он просто ушёл в школу.","Винни-Пух|Пятачок|Тигра|Иа-Иа|Кролик|Кристофер Робин"],
+["t_batbxmas","t90",1997,"Красавица и Чудовище: Чудесное Рождество","Beauty and the Beast: The Enchanted Christmas",6.1,"Слуги замка вспоминают, как Белль пыталась вернуть Чудовищу радость Рождества вопреки козням злого органа Форте.","Белль|Чудовище|Форте|Люмьер|Когсворт|Анжелика"],
+["t_belle","t90",1998,"Волшебный мир Белль","Belle's Magical World",5.2,"Сборник историй о жизни Белль и Чудовища в замке после событий первого фильма.","Белль|Чудовище|Люмьер|Когсворт|миссис Поттс"],
+["t_poca2","t90",1998,"Покахонтас 2: Путешествие в Новый Свет","Pocahontas II: Journey to a New World",5.0,"Покахонтас отправляется в Англию, чтобы предотвратить войну, и знакомится с Джоном Рольфом.","Покахонтас|Джон Рольф|Рэтклифф|Джон Смит|Мико"],
+["t_lk2","t90",1998,"Король Лев 2: Гордость Симбы","The Lion King II: Simba's Pride",6.4,"Дочь Симбы Киара влюбляется в Кову, которого изгнанники растили, чтобы отомстить за Шрама.","Киара|Кову|Симба|Зира|Тимон и Пумба"],
+["t_seasons","t90",1999,"Винни-Пух: Время дарить подарки","Winnie the Pooh: Seasons of Giving",6.3,"Сборник праздничных историй: Пух и друзья встречают времена года и готовятся ко Дню благодарения.","Винни-Пух|Пятачок|Тигра|Кролик|Кристофер Робин"],
+["t_mickeyxmas","t90",1999,"Микки: Однажды под Рождество","Mickey's Once Upon a Christmas",6.6,"Три рождественские истории: Дональд с племянниками, Гуфи с сыном Максом, Микки и Минни.","Микки|Минни|Дональд|Гуфи|Макс|Билли, Вилли и Дилли"],
+["t_tigger","t00",2000,"Тигра","The Tigger Movie",6.4,"Тигра грустит, что он единственный тигра на свете, и отправляется на поиски своей семьи.","Тигра|Ру|Винни-Пух|Пятачок|Кенга"],
+["t_extgoofy","t00",2000,"Неисправимый Гуфи","An Extremely Goofy Movie",6.4,"Макс поступает в колледж, а потерявший работу Гуфи отправляется учиться туда же.","Гуфи|Макс|Сильвия|Пи Джей|Брэдли"],
+["t_lm2","t00",2000,"Русалочка 2: Возвращение в море","The Little Mermaid II: Return to the Sea",5.6,"Дочь Ариэль Мелоди растёт на суше и тайно мечтает о море, а сестра Урсулы, ведьма Моргана, хочет этим воспользоваться.","Мелоди|Ариэль|Эрик|Моргана|Себастьян"],
+["t_lt2","t00",2001,"Леди и Бродяга 2: Приключения Шалуна","Lady and the Tramp II: Scamp's Adventure",5.8,"Щенок Шалун, сын Леди и Бродяги, сбегает из дома к уличной банде и влюбляется в собачку Анжел.","Шалун|Анжел|Леди|Бродяга|Бастер"],
+["t_neverland","t00",2002,"Питер Пэн: Возвращение в Нетландию","Return to Never Land",5.9,"Капитан Крюк похищает Джейн - дочь Венди, которая не верит в сказки, - и Питер Пэн спешит на помощь.","Джейн|Питер Пэн|Динь-Динь|Капитан Крюк|Венди"],
+["t_cind2","t00",2002,"Золушка 2: Мечты сбываются","Cinderella II: Dreams Come True",5.0,"Мыши Жак и Гас сочиняют книгу о новой жизни Золушки во дворце и о сводной сестре Анастасии.","Золушка|принц|Жак и Гас|Анастасия|леди Тремейн"],
+["t_hunch2","t00",2002,"Горбун из Нотр-Дама 2","The Hunchback of Notre Dame II",4.9,"Квазимодо влюбляется в циркачку Мадлен, а её хозяин-фокусник задумал украсть колокол собора.","Квазимодо|Мадлен|Зефир|Сарусш|Эсмеральда"],
+["t_dalm2","t00",2003,"101 далматинец 2: Приключения Патча в Лондоне","101 Dalmatians II: Patch's London Adventure",5.9,"Щенок Патч, мечтающий о славе, сбегает к своему телекумиру Громобою, а Круэлла снова охотится за щенками.","Патч|Громобой|Круэлла де Виль|художник Ларс|Понго"],
+["t_jb2","t00",2003,"Книга джунглей 2","The Jungle Book 2",5.4,"Маугли скучает по джунглям и сбегает из деревни к Балу, а за ним следуют подруга Шанти и Шерхан.","Маугли|Балу|Шанти|Ранджан|Шерхан"],
+["t_piglet","t00",2003,"Большой фильм про Поросёнка","Piglet's Big Movie",6.3,"Друзья не берут маленького Пятачка в дело, он пропадает, и они ищут его по альбому с его рисунками.","Пятачок|Винни-Пух|Тигра|Кролик|Ру"],
+["t_atlantis2","t00",2003,"Атлантида 2: Возвращение Майло","Atlantis: Milo's Return",5.1,"Майло и Кида покидают Атлантиду, чтобы расследовать загадочные происшествия по всему миру.","Майло|Кида|Свин|Одри|Винни"],
+["t_stitch","t00",2003,"Новые приключения Стича","Stitch! The Movie",6.0,"Злодей похищает доктора Джамбу, и Лило со Стичем спасают его, а заодно ищут 625 других экспериментов.","Лило|Стич|Джамба|Пликли|капитан Гантю"],
+["t_lk15","t00",2004,"Король Лев 3: Акуна Матата","The Lion King 1½",6.5,"История «Короля Льва» глазами Тимона и Пумбы - как они на самом деле оказались рядом с Симбой.","Тимон|Пумба|Симба|мама Тимона|дядя Макс"],
+["t_roo","t00",2004,"Винни-Пух: Весенние денёчки с малышом Ру","Springtime with Roo",5.9,"Кролик отменяет Пасху ради весенней уборки, и друзья пытаются вернуть ему праздничное настроение.","Ру|Кролик|Винни-Пух|Тигра|Пятачок"],
+["t_musketeers","t00",2004,"Микки, Дональд, Гуфи: Три мушкетёра","Mickey, Donald, Goofy: The Three Musketeers",6.4,"Микки, Дональд и Гуфи становятся мушкетёрами и защищают принцессу Минни от козней Пита.","Микки|Дональд|Гуфи|Минни|Дейзи|капитан Пит"],
+["t_twicexmas","t00",2004,"Микки: И снова под Рождество","Mickey's Twice Upon a Christmas",5.9,"Пять новых рождественских историй о Микки и его друзьях - уже в компьютерной анимации.","Микки|Минни|Дональд|Гуфи|Плуто"],
+["t_mulan2","t05",2005,"Мулан 2","Mulan II",5.4,"Мулан и Шанг сопровождают трёх принцесс к женихам и пытаются помешать браку по расчёту.","Мулан|Шанг|Мушу|три принцессы"],
+["t_heffalump","t05",2005,"Винни и Слонотоп","Pooh's Heffalump Movie",6.3,"Малыш Ру отправляется ловить таинственного Слонотопа и находит в нём друга - слонёнка Ламми.","Ру|Ламми|Винни-Пух|Кролик|Тигра"],
+["t_tarzan2","t05",2005,"Тарзан 2","Tarzan II",5.5,"Юный Тарзан убегает из семьи горилл, считая себя обузой, и ищет своё место в джунглях.","Тарзан|Терк|Тантор|Кала|Зугор"],
+["t_lilo2","t05",2005,"Лило и Стич 2: Большая проблема Стича","Lilo & Stitch 2: Stitch Has a Glitch",6.4,"У Стича начинаются сбои, которые грозят разрушить дружбу с Лило накануне танцевального конкурса.","Лило|Стич|Нани|Джамба|Пликли"],
+["t_heffhalloween","t05",2005,"Винни-Пух и Слонотоп: Хэллоуин","Pooh's Heffalump Halloween Movie",6.0,"Ру и Ламми отправляются ловить страшного Гоблина, чтобы победить собственные страхи.","Ру|Ламми|Винни-Пух|Тигра|Пятачок"],
+["t_kronk","t05",2005,"Похождения императора 2: Приключения Кронка","Kronk's New Groove",5.8,"Кронк ждёт в гости отца, которому никогда не мог угодить, и вспоминает свою жизнь после событий первого фильма.","Кронк|Изма|Куско|Пача|мисс Бёрди"],
+["t_bambi2","t05",2006,"Бэмби 2","Bambi II",6.3,"Великий Принц леса растит оставшегося без матери Бэмби, и оба учатся понимать друг друга.","Бэмби|Великий Принц|Топотун|Фалина|Ронно"],
+["t_bear2","t05",2006,"Братец медвежонок 2","Brother Bear 2",5.8,"Кенай-медведь и Кода сопровождают подругу детства Кеная Ниту, чтобы освободиться от связавшего их амулета.","Кенай|Кода|Нита|лоси Рат и Тук"],
+["t_fox2","t05",2006,"Лис и пёс 2","The Fox and the Hound 2",5.6,"Юные Тод и Коппер попадают на ярмарку, где Коппера зовут петь в собачьей группе.","Тод|Коппер|Кэш|Дикси"],
+["t_cind3","t05",2007,"Золушка 3: Злые чары","Cinderella III: A Twist in Time",6.3,"Леди Тремейн похищает волшебную палочку и поворачивает время вспять, чтобы туфелька подошла Анастасии.","Золушка|принц|леди Тремейн|Анастасия|Фея-крёстная"],
+["t_princess","t05",2007,"Принцессы Диснея: Следуй за мечтой","Disney Princess Enchanted Tales: Follow Your Dreams",4.9,"Две истории: Жасмин становится наставницей во дворце, а Аврора правит королевством в отсутствие родителей.","Жасмин|Аврора|Флора, Фауна и Мэривеза"],
+["t_ariel","t05",2008,"Русалочка: Начало истории Ариэль","The Little Mermaid: Ariel's Beginning",5.9,"Король Тритон запретил музыку в Атлантике, но юная Ариэль находит тайный клуб и пытается вернуть музыку в королевство.","Ариэль|Себастьян|Флаундер|король Тритон|Марина Дель Рэй"],
+["t_tinker","t08",2008,"Феи","Tinker Bell",6.7,"Фея Динь-Динь рождается феей-мастерицей, но мечтает о другой работе - летать на большую землю.","Динь-Динь|королева Клэрион|Розетта|Серебрянка|Видия"],
+["t_tinker2","t08",2009,"Феи: Потерянное сокровище","Tinker Bell and the Lost Treasure",6.5,"Динь-Динь отправляется в путешествие, чтобы починить сломанный ею волшебный лунный камень.","Динь-Динь|Теренс|светлячок Блейз"],
+["t_tinker3","t08",2010,"Феи: Волшебное спасение","Tinker Bell and the Great Fairy Rescue",6.7,"Любопытство приводит Динь-Динь в дом девочки Лиззи, которая мечтает увидеть настоящую фею.","Динь-Динь|Лиззи|Видия|доктор Гриффитс"],
+["t_wings","t08",2012,"Феи: Тайна зимнего леса","Secret of the Wings",6.8,"Динь-Динь пробирается в зимний лес и узнаёт, что у неё есть сестра-близнец Перивинкл.","Динь-Динь|Перивинкл|лорд Милори|королева Клэрион"],
+["t_planes","t08",2013,"Самолёты","Planes",5.6,"Сельскохозяйственный самолёт Дасти, который боится высоты, мечтает участвовать в кругосветной гонке.","Дасти Кропхоппер|Шкипер|Рипслингер|Шестерёнка"],
+["t_pirate","t08",2014,"Феи: Загадка пиратского острова","The Pirate Fairy",6.6,"Фея Зарина сбегает к пиратам, и Динь-Динь с подругами отправляются за ней - и встречают юного капитана Джеймса Крюка.","Зарина|Динь-Динь|Джеймс Крюк|Серебрянка"],
+["t_planes2","t08",2014,"Самолёты: Огонь и вода","Planes: Fire & Rescue",6.0,"Повредив двигатель, Дасти переучивается в пожарного-спасателя и учится тушить лесные пожары.","Дасти|Блейд Рейнджер|Лил Дипер|Мару"],
+["t_neverbeast","t08",2015,"Феи: Легенда о чудовище","Tinker Bell and the Legend of the NeverBeast",6.9,"Фея животных Фауна подружилась с загадочным чудищем Граттом, которого все остальные считают угрозой.","Фауна|Гратт|Динь-Динь|фея-разведчица Никс"]
+];
+
+/* ===== НАСТРОЙКА ОБЛАКА =====
+   Вставьте сюда данные своего проекта Supabase (см. README.md).
+   Пока поля пустые, прогресс хранится только в этом браузере. */
+const CFG={url:'https://bwxmtvgxepnbkthnaxlp.supabase.co',key:'sb_publishable_6dMkXsLvsmQne5Yu3wk9bw_4_wj5RB-'};
+const CLOUD=!!(CFG.url&&CFG.key);
+const LSU='disney-tracker-user',SS='disney-tracker-ui';
+const root=document.getElementById('root');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const blank=()=>({v:1,updated:0,watched:{},notes:{}});
+const norm=d=>(d&&typeof d==='object'&&d.watched&&d.notes)?d:blank();
+const keyOf=n=>n.trim().toLowerCase().replace(/\s+/g,' ');
+let S=blank(),user=null,dirty=false,status='idle',timer=null;
+let ui={open:[],films:[],filter:'all',tab:'all',q:'',y:0};
+try{const u=JSON.parse(sessionStorage.getItem(SS)||'null');if(u)ui=Object.assign(ui,u)}catch(e){}
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const cacheKey=()=>'disney-cache-'+keyOf(user.name);
+
+function rpc(fn,args,keepalive){
+  const h={'apikey':CFG.key,'Content-Type':'application/json'};
+  if(/^eyJ/.test(CFG.key))h.Authorization='Bearer '+CFG.key;
+  return fetch(CFG.url.replace(/\/+$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:h,body:JSON.stringify(args),keepalive:!!keepalive})
+    .then(async r=>{const j=await r.json().catch(()=>null);if(!r.ok)throw new Error((j&&(j.message||j.hint))||('HTTP '+r.status));return j});
+}
+async function sha(s){
+  try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return s}
+}
+async function loadProfile(name,pin){
+  if(CLOUD){
+    const r=await rpc('load_progress',{p_name:name,p_pin:pin});
+    return {data:norm(r&&r.data),name:(r&&r.name)||name.trim(),created:r&&r.status==='created'};
+  }
+  const k='disney-local-'+keyOf(name),p=lsGet(k),h=await sha(pin);
+  if(p&&p.pin!==h)throw new Error('wrong_pin');
+  if(!p){lsSet(k,{name:name.trim(),pin:h,data:blank()});return {data:blank(),name:name.trim(),created:true}}
+  return {data:norm(p.data),name:p.name};
+}
+async function login(name,pin){
+  const r=await loadProfile(name,pin);
+  user={name:r.name,pin};
+  S=r.data;
+  const c=lsGet(cacheKey());
+  if(c&&c.updated>S.updated){S=norm(c);dirty=true}
+  lsSet(LSU,user);
+  status=dirty?'pending':(CLOUD?'saved':'local');
+  render();
+  if(ui.y)requestAnimationFrame(()=>window.scrollTo(0,ui.y));
+  if(dirty)schedule(800);
+}
+function logout(){
+  if(dirty)save(true);
+  try{localStorage.removeItem(LSU)}catch(e){}
+  user=null;S=blank();dirty=false;showLogin();
+}
+const loginErr=m=>/wrong_pin/.test(m)?'Неверный PIN для этого имени. Если это не ваш профиль, выберите другое имя.':/bad_input/.test(m)?'Введите имя и PIN не короче 4 символов.':/Failed to fetch|NetworkError|HTTP/.test(m)?'Не удалось связаться с облаком. Проверьте интернет и попробуйте ещё раз.':'Ошибка: '+m;
+function showLogin(msg){
+  root.innerHTML='<div class="login"><form class="card" id="lf"><h1>Мультфильмы <span>Disney</span></h1>'+
+  '<p>Введите имя и PIN-код. Если вы здесь впервые, профиль создастся автоматически, а потом по этим имени и PIN вы найдёте свой прогресс на любом устройстве.</p>'+
+  '<label for="ln">Имя</label><input id="ln" autocomplete="username" maxlength="40" required>'+
+  '<label for="lp">PIN-код (от 4 символов)</label><input id="lp" type="password" autocomplete="current-password" minlength="4" maxlength="32" required>'+
+  '<p class="err" id="le" role="alert">'+(msg?esc(msg):'')+'</p><button class="go" type="submit">Войти</button>'+
+  (CLOUD?'':'<p class="hint">Облако пока не подключено: профили сохраняются только в этом браузере.</p>')+
+  '<p class="hint">Не используйте PIN от банковских карт и важных сервисов.</p></form></div>';
+  const f=document.getElementById('lf');
+  f.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const n=document.getElementById('ln').value,p=document.getElementById('lp').value,b=f.querySelector('.go');
+    if(n.trim().length<1||p.length<4){document.getElementById('le').textContent=loginErr('bad_input');return}
+    b.disabled=true;b.textContent='Загружаю…';
+    try{await login(n,p)}catch(err){b.disabled=false;b.textContent='Войти';document.getElementById('le').textContent=loginErr(String(err.message||err))}
+  });
+  document.getElementById('ln').focus();
+}
+const ERA_ST={};for(const e of ERAS)ERA_ST[e[1]]=e[0];
+const inStudio=sid=>F.filter(f=>ERA_ST[f[1]]===sid);
+const svgCheck='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="#2a1a05" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const svgChev='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const svgSearch='<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="#fff" stroke-width="2"/><path d="M13.5 13.5L17 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
+const fmtDate=t=>new Date(t).toLocaleDateString('ru-RU');
+const ring=(attr,cls)=>'<span class="ring'+(cls||'')+'" '+attr+'><b></b></span>';
+
+function filmHTML(f){
+  const [id,,yr,ru,en,r,sum,heroes]=f,w=!!S.watched[id];
+  const openF=ui.films.includes(id)?' open':'';
+  return '<li class="film'+(w?' done':'')+'" data-id="'+id+'"><label class="chk" title="Отметить как просмотренный"><input type="checkbox" data-w="'+id+'"'+(w?' checked':'')+' aria-label="'+esc(ru)+': просмотрено"><span class="box">'+svgCheck+'</span></label>'+
+  '<details class="info" data-f="'+id+'"'+openF+'><summary><span class="t">'+esc(ru)+'<small><em>'+yr+'</em> · '+esc(en)+'</small></span>'+
+  (r==null?'<span class="imdb na" title="Фильм только вышел, рейтинг ещё не устоялся">IMDb -</span>':'<span class="imdb" title="Рейтинг IMDb">★ '+r.toFixed(1)+'</span>')+'<span class="mchev">'+svgChev+'</span></summary>'+
+  '<div class="body"><p>'+esc(sum)+'</p><span class="lbl">Главные герои</span><div class="heroes">'+heroes.split('|').map(h=>'<span>'+esc(h)+'</span>').join('')+'</div>'+
+  '<label class="lbl" for="n-'+id+'">Мои впечатления</label><textarea id="n-'+id+'" data-n="'+id+'" placeholder="Что понравилось, любимая сцена или песня, с кем смотрели…"></textarea>'+
+  '<div class="meta"><span class="seen" data-seen="'+id+'">'+(w?'Просмотрено '+fmtDate(S.watched[id]):'')+'</span><span>Заметка сохраняется автоматически</span></div></div></details></li>';
+}
+function render(){
+  const total=F.length;
+  root.innerHTML='<div class="wrap"><header><div class="who"><span>Профиль: <b>'+esc(user.name)+'</b></span><button id="logout">Сменить</button></div><h1>Мультфильмы <span>Disney</span></h1><p class="lead"><b>'+total+' полнометражных мультфильма</b> в трёх разделах: канон Walt Disney Animation Studios, Pixar и сиквелы DisneyToon Studios (с 1937 по 2026 год). Отмечайте просмотренные, раскрывайте карточку фильма и записывайте впечатления.</p></header>'+
+  '<div class="toolbar"><div class="tabs" role="tablist" aria-label="Разделы">'+
+  [['all','Все','',total]].concat(STUDIOS.map(([sid,,short])=>[sid,short])).map(([k,t])=>'<button role="tab" data-tab="'+k+'" aria-selected="'+(ui.tab===k)+'">'+esc(t)+' <small data-tc="'+k+'"></small></button>').join('')+
+  '</div><div class="row2"><label class="search">'+svgSearch+'<input type="search" id="q" placeholder="Фильм, герой или год" value="'+esc(ui.q)+'" aria-label="Поиск"></label>'+
+  '<div class="seg-row"><div class="seg" role="group" aria-label="Фильтр">'+[['all','Все'],['todo','Не просмотрено'],['done','Просмотрено']].map(([k,t])=>'<button data-filter="'+k+'" aria-pressed="'+(ui.filter===k)+'">'+t+'</button>').join('')+'</div>'+
+  '<button class="ghost" id="expand">Раскрыть всё</button><button class="ghost" id="collapse">Свернуть</button></div></div></div>'+
+  '<p class="note">Рейтинги IMDb округлены до десятых и примерные: со временем они немного меняются.</p>'+
+  '<main id="list">'+STUDIOS.map(([sid,name,short,desc])=>
+    '<section class="studio" id="s-'+sid+'" data-studio="'+sid+'"><div class="st-head">'+ring('data-sr="'+sid+'"')+'<div class="txt"><h2>'+esc(name)+'</h2><p>'+esc(desc)+'</p></div></div>'+
+    ERAS.filter(e=>e[0]===sid).map(([,eid,ename,yrs,edesc])=>{
+      const fs=F.filter(f=>f[1]===eid);
+      return '<details class="era" data-era="'+eid+'"'+(ui.open.includes(eid)?' open':'')+'><summary>'+ring('data-er="'+eid+'"')+'<span class="era-t"><span class="era-name">'+esc(ename)+'</span><span class="era-sub">'+yrs+' <i data-c="'+eid+'"></i></span></span><span class="chev">'+svgChev+'</span></summary>'+
+      '<p class="era-desc">'+esc(edesc)+'</p><ul class="films">'+fs.map(filmHTML).join('')+'</ul></details>';
+    }).join('')+'</section>').join('')+
+  '<div class="empty" id="empty" hidden>Ничего не нашлось. Попробуйте другое слово или другой раздел.</div></main></div>'+
+  '<div class="dock" role="region" aria-label="Прогресс просмотра"><div class="in">'+ring('id="pct"')+'<div class="btxt"><span id="cnt"></span><span id="st"></span></div>'+
+  '<div class="tracks">'+STUDIOS.map(([sid,,short])=>'<div class="track"><div class="tl"><span>'+esc(short)+'</span><b data-bc="'+sid+'"></b></div><div class="tb"><i data-bm="'+sid+'"></i></div></div>').join('')+'</div></div></div>';
+  for(const t of root.querySelectorAll('textarea[data-n]'))t.value=S.notes[t.dataset.n]||'';
+  counts();applyFilter();showStatus();
+}
+function setRing(el,k,n,label){if(!el)return;el.style.setProperty('--p',n?k/n*100:0);el.querySelector('b').textContent=label}
+function counts(){
+  const n=F.filter(f=>S.watched[f[0]]).length,p=Math.round(n/F.length*100);
+  setRing(document.getElementById('pct'),n,F.length,p+'%');
+  document.getElementById('cnt').textContent=n===F.length?'Вся коллекция просмотрена: '+n+' из '+n+'!':'Просмотрено '+n+' из '+F.length;
+  root.querySelector('[data-tc="all"]').textContent=n+'/'+F.length;
+  for(const e of ERAS){
+    const eid=e[1],fs=F.filter(f=>f[1]===eid),k=fs.filter(f=>S.watched[f[0]]).length;
+    root.querySelector('[data-c="'+eid+'"]').textContent='· '+k+' из '+fs.length;
+    setRing(root.querySelector('[data-er="'+eid+'"]'),k,fs.length,k+'/'+fs.length);
+  }
+  for(const [sid] of STUDIOS){
+    const fs=inStudio(sid),k=fs.filter(f=>S.watched[f[0]]).length;
+    setRing(root.querySelector('[data-sr="'+sid+'"]'),k,fs.length,Math.round(k/fs.length*100)+'%');
+    root.querySelector('[data-bc="'+sid+'"]').textContent=k+' / '+fs.length;
+    root.querySelector('[data-tc="'+sid+'"]').textContent=k+'/'+fs.length;
+    root.querySelector('[data-bm="'+sid+'"]').style.width=(k/fs.length*100)+'%';
+  }
+}
+function applyFilter(){
+  const q=ui.q.trim().toLowerCase();let any=false;
+  for(const sec of root.querySelectorAll('section.studio')){
+    const onTab=ui.tab==='all'||ui.tab===sec.dataset.studio;let secVis=0;
+    for(const era of sec.querySelectorAll('details.era')){
+      let vis=0;
+      for(const li of era.querySelectorAll('li.film')){
+        const f=F.find(x=>x[0]===li.dataset.id),w=!!S.watched[f[0]];
+        const okF=ui.filter==='all'||(ui.filter==='done'?w:!w);
+        const okQ=!q||(f[3]+' '+f[4]+' '+f[2]+' '+f[7]).toLowerCase().includes(q);
+        li.hidden=!(okF&&okQ);if(!li.hidden)vis++;
+      }
+      era.hidden=!vis;if(vis)secVis++;
+      if(q&&vis&&onTab)era.open=true;
+    }
+    sec.hidden=!(onTab&&secVis);if(!sec.hidden)any=true;
+  }
+  document.getElementById('empty').hidden=any;
+}
+function showStatus(){
+  const el=document.getElementById('st');if(!el)return;
+  el.textContent=!CLOUD?'Сохраняется в этом браузере':status==='saving'?'Сохраняю…':status==='saved'?'Сохранено в облаке':status==='offline'?'Нет связи, повторю попытку':'Есть несохранённые изменения';
+}
+function saveUI(){
+  ui.open=[...root.querySelectorAll('details.era[open]')].map(d=>d.dataset.era);
+  ui.films=[...root.querySelectorAll('details.info[open]')].map(d=>d.dataset.f);
+  ui.y=window.scrollY;
+  try{sessionStorage.setItem(SS,JSON.stringify(ui))}catch(e){}
+}
+function changed(ms){
+  S.updated=Date.now();
+  lsSet(cacheKey(),S);
+  dirty=true;schedule(ms||1500);
+}
+function schedule(ms){
+  status='pending';showStatus();clearTimeout(timer);timer=setTimeout(()=>save(),ms);
+}
+function save(keepalive){
+  if(!user||!dirty)return;
+  if(!CLOUD){
+    const k='disney-local-'+keyOf(user.name),p=lsGet(k)||{name:user.name};
+    p.data=S;lsSet(k,p);dirty=false;status='local';showStatus();return;
+  }
+  status='saving';showStatus();
+  const snap=S.updated;
+  rpc('save_progress',{p_name:user.name,p_pin:user.pin,p_data:S},keepalive).then(()=>{
+    if(S.updated===snap)dirty=false;
+    status=dirty?'pending':'saved';showStatus();if(dirty)schedule(1500);
+  }).catch(e=>{
+    if(/wrong_pin/.test(String(e.message))){logout();return}
+    status='offline';showStatus();clearTimeout(timer);timer=setTimeout(()=>save(),10000);
+  });
+}
+async function refresh(){
+  if(!CLOUD||!user||dirty)return;
+  try{const r=await loadProfile(user.name,user.pin);if(r.data.updated>S.updated){S=r.data;lsSet(cacheKey(),S);saveUI();render()}}catch(e){}
+}
+root.addEventListener('change',e=>{
+  const id=e.target.dataset&&e.target.dataset.w;if(!id)return;
+  if(e.target.checked)S.watched[id]=Date.now();else delete S.watched[id];
+  const li=root.querySelector('li.film[data-id="'+id+'"]');li.classList.toggle('done',e.target.checked);
+  root.querySelector('[data-seen="'+id+'"]').textContent=e.target.checked?'Просмотрено '+fmtDate(S.watched[id]):'';
+  const b=e.target.nextElementSibling;b.classList.remove('pop');void b.offsetWidth;if(e.target.checked)b.classList.add('pop');
+  counts();if(ui.filter!=='all')applyFilter();changed();
+});
+root.addEventListener('input',e=>{
+  if(e.target.id==='q'){ui.q=e.target.value;applyFilter();saveUI();return}
+  const id=e.target.dataset&&e.target.dataset.n;if(!id)return;
+  const v=e.target.value;if(v.trim())S.notes[id]=v;else delete S.notes[id];
+  changed(1500);
+});
+
+root.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.filter){ui.filter=b.dataset.filter;for(const x of root.querySelectorAll('[data-filter]'))x.setAttribute('aria-pressed',x===b);applyFilter();saveUI()}
+  else if(b.dataset.tab){ui.tab=b.dataset.tab;for(const x of root.querySelectorAll('[data-tab]'))x.setAttribute('aria-selected',x===b);applyFilter();saveUI();
+    const tb=root.querySelector('.toolbar');const top=tb.getBoundingClientRect().top+window.scrollY;if(window.scrollY>top)window.scrollTo({top:top,behavior:'auto'})}
+  else if(b.id==='logout'){logout()}
+  else if(b.id==='expand'){for(const d of root.querySelectorAll('details.era'))d.open=true;saveUI()}
+  else if(b.id==='collapse'){for(const d of root.querySelectorAll('details'))d.open=false;saveUI()}
+});
+root.addEventListener('toggle',()=>saveUI(),true);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();else if(dirty)save(true)});
+window.addEventListener('pagehide',()=>{if(dirty)save(true)});
+{
+  const u=lsGet(LSU);
+  if(u&&u.name&&u.pin){root.innerHTML='<div class="login"><div class="card"><p>Загружаю профиль…</p></div></div>';login(u.name,u.pin).catch(e=>showLogin(loginErr(String(e.message||e))))}
+  else showLogin();
+}
+}
+</script>
+</body>
+</html>
